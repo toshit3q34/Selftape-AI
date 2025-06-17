@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+python-multipart
+PyMuPDF  # or pdfplumber/pdfminer.six
+paddleocr
+pillow
+fitz
