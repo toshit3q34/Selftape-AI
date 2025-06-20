@@ -47,7 +47,8 @@ class _HomePageState extends State<HomePage> {
 
     var request = http.MultipartRequest(
       'POST',
-      Uri.parse('http://127.0.0.1:8000/upload-pdf/'),
+      Uri.parse('http://<IP_address>:8000/upload-pdf/'),
+      // for emulator, put IP_address: 127.0.0.1
     );
     request.files.add(await http.MultipartFile.fromPath('file', filePath!));
 
