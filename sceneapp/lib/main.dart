@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sceneapp/pages/auth_page.dart';
-import 'package:sceneapp/pages/home_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
@@ -10,7 +9,7 @@ void main() async {
   options: DefaultFirebaseOptions.currentPlatform,
   );
     // Get available cameras
-  runApp(const MyApp());
+  runApp(MyApp());
 
 }
 
