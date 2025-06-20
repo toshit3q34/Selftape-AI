@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:camera/camera.dart';
+import 'package:sceneapp/pages/record_page.dart';
+import 'package:sceneapp/ip_address.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,7 +16,30 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String? fileName;
   String? filePath;
-  String? extractedText;
+  List<CameraDescription>? cameras;
+  bool _loadingCameras = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initCameras();
+  }
+
+  Future<void> _initCameras() async {
+    try {
+      final cams = await availableCameras();
+      setState(() {
+        cameras = cams;
+        _loadingCameras = false;
+      });
+    } catch (e) {
+      setState(() {
+        cameras = [];
+        _loadingCameras = false;
+      });
+      print('Camera initialization error: $e');
+    }
+  }
 
   void signUserOut() {
     FirebaseAuth.instance.signOut();
@@ -30,7 +56,6 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         fileName = file.name;
         filePath = file.path;
-        extractedText = null;
       });
     } else {
       print('No PDF selected');
@@ -47,7 +72,7 @@ class _HomePageState extends State<HomePage> {
 
     var request = http.MultipartRequest(
       'POST',
-      Uri.parse('http://127.0.0.1:8000/upload-pdf/'),
+      Uri.parse('http://${Config.IP_ADDRESS}:8000/upload-pdf/'),
     );
     request.files.add(await http.MultipartFile.fromPath('file', filePath!));
 
@@ -59,15 +84,22 @@ class _HomePageState extends State<HomePage> {
             ? responseBody.split('"text":"')[1].split('"').first.replaceAll('\\n', '\n')
             : '';
 
-        final lines = text
-            .split('\n')
-            .where((line) => line.trim().isNotEmpty)
-            .take(5)
-            .toList();
-
-        setState(() {
-          extractedText = lines.join('\n');
-        });
+        // Navigate to RecordingPage if cameras are available
+        if (cameras != null && cameras!.isNotEmpty) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RecordingPage(
+                extractedText: text,
+                cameras: cameras!,
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Camera initialization failed. Please try again.')),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${response.statusCode}')),
@@ -83,6 +115,12 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadingCameras) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
@@ -147,31 +185,6 @@ class _HomePageState extends State<HomePage> {
                     foregroundColor: Colors.white,
                   ),
                 ),
-
-                const SizedBox(height: 20),
-
-                if (extractedText != null)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Extracted Preview:',
-                        style: TextStyle(
-                          color: Colors.grey[800],
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        extractedText!,
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
               ],
             ),
           ),
