@@ -185,8 +185,9 @@ def extract_script(pdf_path):
             if is_character_name(raw_line):
                 # Flush any accumulated narration
                 if current_narration:
-                    output_blocks.append(f"NARRATOR: {' '.join(current_narration)}")
-                    current_narration = []
+                    1
+                    # output_blocks.append(f"NARRATOR: {' '.join(current_narration)}")
+                    # current_narration = []
                 
                 # Extract character name (remove any parentheticals for the name itself)
                 current_character = re.sub(r'\s*\([^)]*\)', '', raw_line).strip().upper()
@@ -229,7 +230,8 @@ def extract_script(pdf_path):
 
     # Add any remaining narration
     if current_narration:
-        output_blocks.append(f"NARRATOR: {' '.join(current_narration)}")
+        1
+        # output_blocks.append(f"NARRATOR: {' '.join(current_narration)}")
 
     doc.close()
     return '\n'.join(output_blocks)
