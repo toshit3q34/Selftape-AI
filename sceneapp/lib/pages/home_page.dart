@@ -16,6 +16,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String? fileName;
   String? filePath;
+  String? extractedText;
   List<CameraDescription>? cameras;
   bool _loadingCameras = true;
 
@@ -46,21 +47,24 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> pickPdfFile() async {
+    print("Before file picker");
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
     );
+    print("After file picker");
 
     if (result != null && result.files.isNotEmpty) {
       final file = result.files.first;
       setState(() {
         fileName = file.name;
         filePath = file.path;
+        extractedText = null;
       });
     } else {
       print('No PDF selected');
     }
-  }
+}
 
   Future<void> convertToText() async {
     if (filePath == null) {
