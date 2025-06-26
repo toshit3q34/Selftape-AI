@@ -33,6 +33,7 @@ class _HomePageState extends State<HomePage> {
         cameras = cams;
         _loadingCameras = false;
       });
+      print('Camera OK');
     } catch (e) {
       setState(() {
         cameras = [];
@@ -89,6 +90,9 @@ class _HomePageState extends State<HomePage> {
             : '';
 
         // Navigate to RecordingPage if cameras are available
+        if(cameras!.isEmpty){
+          print('ok');
+        }
         if (cameras != null && cameras!.isNotEmpty) {
           Navigator.push(
             context,
@@ -183,11 +187,11 @@ class _HomePageState extends State<HomePage> {
 
                 ElevatedButton(
                   onPressed: convertToText,
-                  child: const Text('Convert to Text'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
                   ),
+                  child: const Text('Convert to Text'),
                 ),
               ],
             ),

@@ -12,7 +12,7 @@ class MyButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.all(13),
-        margin: EdgeInsets.symmetric(horizontal: 335),
+        margin: EdgeInsets.symmetric(horizontal: 100),
         decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(8),),
         child: Center(
           child: Text("Sign In", style: TextStyle(color: Colors.white, fontSize : 17)),
