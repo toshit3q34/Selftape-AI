@@ -15,24 +15,27 @@
 
 ## Project Structure
 
-- backend/
-    - main.py
-    - process_pdf.py
-    - stt.py
-- sceneapp/
-    - lib/
-        - pages/
-            - login_page.dart
-            - home_page.dart
-            - auth_page.dart
-            - record_page.dart
-            - character_selection_page.dart
-        - components/
-            - button.dart
-            - square_tile.dart
-            - text_field.dart
-        - ip_address.dart
-        - main.dart
+```bash
+.
+├── backend/
+│   ├── main.py
+│   ├── process_pdf.py
+│   └── stt.py
+└── sceneapp/
+    └── lib/
+        ├── pages/
+        │   ├── login_page.dart
+        │   ├── home_page.dart
+        │   ├── auth_page.dart
+        │   ├── record_page.dart
+        │   └── character_selection_page.dart
+        ├── components/
+        │   ├── button.dart
+        │   ├── square_tile.dart
+        │   └── text_field.dart
+        ├── ip_address.dart
+        └── main.dart
+```
 
 ---
 
