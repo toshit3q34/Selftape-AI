@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:camera/camera.dart';
+import 'package:sceneapp/pages/character_selection_page.dart';
 import 'package:sceneapp/pages/record_page.dart';
 import 'package:sceneapp/ip_address.dart';
 
@@ -100,20 +103,19 @@ class _HomePageState extends State<HomePage>
       var response = await request.send();
       if (response.statusCode == 200) {
         final responseBody = await response.stream.bytesToString();
-        final text = responseBody.contains('"text"')
-            ? responseBody
-                  .split('"text":"')[1]
-                  .split('"')
-                  .first
-                  .replaceAll('\\n', '\n')
-            : '';
+        final responseJson = jsonDecode(responseBody);
+        final text = responseJson['text'].toString().replaceAll('\\n', '\n');
+        final characters = List<String>.from(responseJson['characters']);
 
         if (cameras != null && cameras!.isNotEmpty) {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  RecordingPage(extractedText: text, cameras: cameras!),
+              builder: (context) => CharacterSelectionPage(
+                extractedText: text,
+                cameras: cameras!,
+                characters: characters,
+              ),
             ),
           );
         } else {

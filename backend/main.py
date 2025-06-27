@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from process_pdf import extract_script
+from process_pdf import extract_script, get_unique_characters
 import shutil
 import os
 
@@ -16,7 +16,7 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"message": "FastAPI is running ✅"}
+    return {"message": "FastAPI is running :)"}
 
 @app.post("/upload-pdf/")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -27,5 +27,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     
     script_text = extract_script(file_location)
     os.remove(file_location)  # Optional: cleanup
-    
-    return {"text": script_text}
+
+    characters = get_unique_characters(script_text)
+
+    return {"text": script_text, "characters" : characters}

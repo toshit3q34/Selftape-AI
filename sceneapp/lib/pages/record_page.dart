@@ -141,14 +141,9 @@ class _RecordingPageState extends State<RecordingPage> {
         child: Container(
           decoration: BoxDecoration(
             color: primaryColor,
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
-            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
             ],
