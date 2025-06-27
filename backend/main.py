@@ -14,9 +14,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def root():
+    return {"message": "FastAPI is running ✅"}
+
 @app.post("/upload-pdf/")
 async def upload_pdf(file: UploadFile = File(...)):
     file_location = f"scripts/{file.filename}"
+    print("here")
     with open(file_location, "wb") as f:
         shutil.copyfileobj(file.file, f)
     

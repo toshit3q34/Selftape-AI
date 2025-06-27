@@ -34,7 +34,6 @@ class _RecordingPageState extends State<RecordingPage> {
       return;
     }
 
-    // Use front camera if available
     final frontCamera = widget.cameras.firstWhere(
       (camera) => camera.lensDirection == CameraLensDirection.front,
       orElse: () => widget.cameras.first,
@@ -42,7 +41,7 @@ class _RecordingPageState extends State<RecordingPage> {
 
     _controller = CameraController(
       frontCamera,
-      ResolutionPreset.medium,
+      ResolutionPreset.max,
       enableAudio: true,
     );
 
@@ -61,9 +60,8 @@ class _RecordingPageState extends State<RecordingPage> {
       try {
         final XFile file = await _controller!.stopVideoRecording();
         setState(() => _isRecording = false);
-        
+
         String videoPath = file.path;
-        // Rename .temp files
         if (videoPath.endsWith('.temp')) {
           final newPath = videoPath.replaceAll('.temp', '.mp4');
           await File(videoPath).rename(newPath);
@@ -71,9 +69,8 @@ class _RecordingPageState extends State<RecordingPage> {
         }
 
         final bool? success = await GallerySaver.saveVideo(videoPath);
-        setState(() => _cameraMessage = success == true
-            ? 'Video saved to gallery!'
-            : 'Failed to save video');
+        setState(() => _cameraMessage =
+            success == true ? '✅ Saved to gallery!' : '❌ Save failed');
       } catch (e) {
         setState(() => _cameraMessage = 'Error: $e');
       }
@@ -82,7 +79,7 @@ class _RecordingPageState extends State<RecordingPage> {
         await _controller!.startVideoRecording();
         setState(() {
           _isRecording = true;
-          _cameraMessage = 'Recording...';
+          _cameraMessage = '🔴 Recording...';
         });
       } catch (e) {
         setState(() => _cameraMessage = 'Error: $e');
@@ -98,78 +95,135 @@ class _RecordingPageState extends State<RecordingPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.grey[300],
-      appBar: AppBar(
-        backgroundColor: Colors.grey[300],
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      backgroundColor: Colors.grey.shade100,
       body: SafeArea(
         child: Column(
           children: [
-            // Camera Preview Section
-            Expanded(
-              flex: 3,
-              child: _controller == null || !_controller!.value.isInitialized
-                  ? const Center(child: CircularProgressIndicator())
-                  : AspectRatio(
-                      aspectRatio: _controller!.value.aspectRatio,
-                      child: CameraPreview(_controller!),
+            // Camera + back button in Stack
+            Stack(
+              children: [
+                Center(
+                  child: _controller == null || !_controller!.value.isInitialized
+                      ? const SizedBox(
+                          height: 350,
+                          child: Center(child: CircularProgressIndicator()))
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: SizedBox(
+                            height: 375,
+                            child: AspectRatio(
+                              aspectRatio: 0.78,
+                              child: CameraPreview(_controller!),
+                            ),
+                          ),
+                        ),
+                ),
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      // ignore: deprecated_member_use
+                      color: Colors.black.withOpacity(0.5),
+                      shape: BoxShape.circle,
                     ),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            
-            // Recording Controls
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton.icon(
-                icon: Icon(_isRecording ? Icons.stop : Icons.videocam),
-                label: Text(_isRecording ? 'Stop Recording' : 'Record Video'),
-                onPressed: _recordVideo,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isRecording ? Colors.red : Colors.black,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+
+            const SizedBox(height: 10),
+
+            // Record Button
+            GestureDetector(
+              onTap: _recordVideo,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                decoration: BoxDecoration(
+                  color: _isRecording ? Colors.red.shade600 : Colors.black,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    )
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _isRecording ? Icons.stop : Icons.videocam,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      _isRecording ? 'Stop Recording' : 'Record Video',
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
                 ),
               ),
             ),
-            
+
+            // Message (camera or save status)
             if (_cameraMessage.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Text(_cameraMessage, textAlign: TextAlign.center),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  _cameraMessage,
+                  style: TextStyle(
+                    color: Colors.grey.shade800,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-            
-            // Extracted Text Section
+
+            const SizedBox(height: 5),
+
+            // Extracted Script Section
             Expanded(
-              flex: 2,
               child: Container(
-                padding: const EdgeInsets.all(16.0),
+                width: double.infinity,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    )
+                  ],
                 ),
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Extracted Script:',
-                        style: TextStyle(
-                          color: Colors.grey[800],
+                        'Extracted Script',
+                        style: theme.textTheme.titleMedium!.copyWith(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          color: Colors.black87,
                         ),
                       ),
                       const SizedBox(height: 10),
                       Text(
                         widget.extractedText,
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                          fontSize: 14,
+                        style: theme.textTheme.bodyMedium!.copyWith(
+                          color: Colors.grey.shade800,
+                          height: 1.5,
                         ),
                       ),
                     ],
@@ -177,6 +231,8 @@ class _RecordingPageState extends State<RecordingPage> {
                 ),
               ),
             ),
+
+            const SizedBox(height: 20),
           ],
         ),
       ),

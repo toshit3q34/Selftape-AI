@@ -86,7 +86,7 @@ def extract_lines_from_image_page(page):
     if img.mode != 'RGB':
         img = img.convert('RGB')
     
-    result = ocr.ocr(np.array(img), cls=True)
+    result = ocr.ocr(np.array(img))
     
     if result and result[0]:
         # Extract and sort OCR results by vertical position
