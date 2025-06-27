@@ -1,22 +1,57 @@
-sceneapp is the flutter front-end for all platforms. To run do :
-1. cd sceneapp/
-2. flutter pub get
-3. flutter run -d <device_id> OR flutter run [ Use flutter devices for list of devices ]
-4. For hot reload do r, for reset do R
+# 🎬 SelfTape-AI
 
-Install dependencies in backend :
-1. cd backend/
-2. python -m venv venv
-3. source venv/bin/activate      # macOS/Linux
-   venv\Scripts\activate         # Windows
-4. pip install -r requirements.txt
+**SelfTape-AI** is a cross-platform Flutter app that lets you record self-tape scenes by performing one character while the AI performs the others using real-time text-to-speech and speech recognition. It also records your video, enabling a full acting experience.
 
-backend is in FastAPI. To run do :
-1. cd backend/
-2. source venv/bin/activate
-3. uvicorn main:app --reload --host 0.0.0.0 --port 8000 [ Runs backend at http://127.0.0.1:8000 ]
+---
 
-Order should be :
-1. Install dependencies for backend
-2. Start the backend on one terminal
-3. Then start the frontend on another terminal
+## Prerequisites
+
+- Flutter SDK installed: [flutter.dev/docs/get-started/install](https://flutter.dev/docs/get-started/install)
+- Python 3.7+ with `venv`
+- Deepgram API key (for STT)
+- System TTS voices (Zira, David, etc.)
+
+---
+
+## Getting Started
+
+### Install Backend Dependencies
+
+```bash
+cd backend/
+python -m venv venv
+# Activate the virtual environment:
+source venv/bin/activate      # macOS/Linux
+venv\Scripts\activate         # Windows
+pip install -r requirements.txt
+```
+### Run the Backend
+
+```bash
+cd backend/
+source venv/bin/activate
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Setup and Run Frontend
+
+```bash
+cd sceneapp/
+flutter pub get
+flutter run -d <device_id>  # Use flutter devices for list of devices
+```
+
+---
+
+## Features
+
+- Upload a script and automatically extract characters and dialogues
+- Assign who plays each character: You or AI
+- Live camera recording while delivering lines
+- AI Text-to-Speech for characters assigned to AI
+- Real-time Speech-to-Text matching using Deepgram WebSocket API
+- Expandable script panel for real-time reference
+- Automatically saves recordings to device gallery
+- Cross-platform Flutter UI (Android, iOS, Desktop)
+
+---
