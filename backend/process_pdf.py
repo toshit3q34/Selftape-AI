@@ -4,6 +4,7 @@ from paddleocr import PaddleOCR
 import numpy as np
 from PIL import Image
 import io
+import os
 
 ocr = PaddleOCR(lang='en', enable_mkldnn = False)
 
@@ -335,6 +336,54 @@ def is_likely_character_name_ocr(line):
                 return True
     
     return False
+
+def get_unique_characters(script_text):
+    """
+    Extracts and returns a list of all unique character names from the script text.
+    Assumes each dialogue line starts with CHARACTER_NAME: dialogue.
+    """
+    characters = set()
+    for line in script_text.splitlines():
+        if ':' in line:
+            character = line.split(':', 1)[0].strip().upper()
+            characters.add(character)
+    return list(characters)
+
+
+def script_without_character(script_text, character_name):
+    """
+    Remove all dialogue lines spoken by the given character.
+    """
+    character_name = character_name.strip().upper() + ":"
+    filtered_lines = [
+        line for line in script_text.splitlines()
+        if not line.startswith(character_name)
+    ]
+    return "\n".join(filtered_lines)
+
+def script_with_character(script_text, character):
+    """
+    Returns a string containing only the dialogue lines spoken by the specified character.
+    Assumes each dialogue line starts with CHARACTER_NAME: dialogue.
+    """
+    character_prefix = character.strip().upper() + ":"
+    selected_lines = [
+        line for line in script_text.splitlines()
+        if line.startswith(character_prefix)
+    ]
+    return "\n".join(selected_lines)
+
+
+# Example usage:
+if __name__ == "__main__":
+    # Suppose you have already extracted the script text
+    script_text = extract_script("F:/ML/ST/app/Selftape-AI/backend/scripts/AftertheTrade.pdf")  # Your existing extraction function
+
+    script=script_with_character(script_text, "PAMELA")
+
+
+
+# Save or use filtered_script as needed
 
 # Usage
 # if __name__ == "__main__":
