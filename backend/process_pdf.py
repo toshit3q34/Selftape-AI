@@ -373,13 +373,30 @@ def script_with_character(script_text, character):
     ]
     return "\n".join(selected_lines)
 
+import re
 
-# Example usage:
-if __name__ == "__main__":
-    # Suppose you have already extracted the script text
-    script_text = extract_script("F:/ML/ST/app/Selftape-AI/backend/scripts/AftertheTrade.pdf")  # Your existing extraction function
+def split_dialogue_by_sentence(script_text):
+    """
+    Split each dialogue line after every sentence.
+    """
+    output_lines = []
+    for line in script_text.splitlines():
+        if ':' in line:
+            character, dialogue = line.split(':', 1)
+            character = character.strip()
+            # Split dialogue into sentences using regex
+            sentences = re.findall(r'[^.!?]+[.!?]+|[^.!?]+$', dialogue.strip())
+            for sentence in sentences:
+                sentence = sentence.strip()
+                if sentence:
+                    output_lines.append(f"{character}: {sentence}")
+        else:
+            # Non-dialogue lines (e.g., narration) are kept as is
+            output_lines.append(line)
+    return '\n'.join(output_lines)
 
-    script=script_with_character(script_text, "PAMELA")
+
+
 
 
 
