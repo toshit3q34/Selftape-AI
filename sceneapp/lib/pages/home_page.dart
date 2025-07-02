@@ -6,7 +6,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:camera/camera.dart';
 import 'package:sceneapp/pages/character_selection_page.dart';
-import 'package:sceneapp/pages/record_page.dart';
 import 'package:sceneapp/ip_address.dart';
 
 class HomePage extends StatefulWidget {
@@ -93,10 +92,21 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
+    final user = FirebaseAuth.instance.currentUser;
+    final userUid = user?.uid;
+
+    if (userUid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in.')),
+      );
+      return;
+    }
+
     var request = http.MultipartRequest(
       'POST',
       Uri.parse('http://${Config.IP_ADDRESS}:8000/upload-pdf/'),
     );
+    request.fields['user_uid'] = userUid;
     request.files.add(await http.MultipartFile.fromPath('file', filePath!));
 
     try {
@@ -104,8 +114,10 @@ class _HomePageState extends State<HomePage>
       if (response.statusCode == 200) {
         final responseBody = await response.stream.bytesToString();
         final responseJson = jsonDecode(responseBody);
-        final text = responseJson['text'].toString().replaceAll('\\n', '\n');
+        final text = responseJson['text'].toString().replaceAll('\n', '\n');
         final characters = List<String>.from(responseJson['characters']);
+        final scriptHash = responseJson['script_hash'].toString();
+        final userUid = responseJson['user_uid'].toString();
 
         if (cameras != null && cameras!.isNotEmpty) {
           Navigator.push(
@@ -115,6 +127,8 @@ class _HomePageState extends State<HomePage>
                 extractedText: text,
                 cameras: cameras!,
                 characters: characters,
+                scriptHash: scriptHash,
+                userUid: userUid,
               ),
             ),
           );
@@ -146,10 +160,8 @@ class _HomePageState extends State<HomePage>
     return Scaffold(
       backgroundColor: Colors.white,
 
-      // Removed default appBar and used a custom header below
       extendBodyBehindAppBar: true,
 
-      // Bottom Navigation
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
         selectedItemColor: primaryColor,
@@ -160,14 +172,11 @@ class _HomePageState extends State<HomePage>
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
-        onTap: (index) {
-          // handle navigation
-        },
+        onTap: (index) {},
       ),
 
       body: Stack(
         children: [
-          // Ripples
           Positioned(
             top: -60,
             left: -80,
@@ -213,7 +222,6 @@ class _HomePageState extends State<HomePage>
             ),
           ),
 
-          // Custom AppBar
           Positioned(
             top: 0,
             left: 0,
@@ -274,7 +282,6 @@ class _HomePageState extends State<HomePage>
             ),
           ),
 
-          // Main content
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -368,7 +375,6 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  // Ripple Helper
   Widget _buildRipple(double size, double opacity) {
     return Container(
       height: size,

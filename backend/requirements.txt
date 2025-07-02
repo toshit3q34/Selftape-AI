@@ -4,4 +4,12 @@ python-multipart
 PyMuPDF  # or pdfplumber/pdfminer.six
 paddleocr
 pillow
-fitz
+sqlalchemy
+psycopg2-binary
+sounddevice
+cartesia
+numpy
+websockets
+deepgram-sdk
+rapidfuzz
+simpleaudio

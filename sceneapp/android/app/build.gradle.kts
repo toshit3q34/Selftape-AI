@@ -23,7 +23,7 @@ android {
     }
 
     defaultConfig {
-        minSdk = 23
+        minSdk = 24
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.sceneapp"
         // You can update the following values to match your application needs.

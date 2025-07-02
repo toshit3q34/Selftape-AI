@@ -6,12 +6,16 @@ class CharacterSelectionPage extends StatefulWidget {
   final String extractedText;
   final List<String> characters;
   final List<CameraDescription> cameras;
+  final String scriptHash;
+  final String userUid;
 
   const CharacterSelectionPage({
     super.key,
     required this.extractedText,
     required this.characters,
     required this.cameras,
+    required this.scriptHash,
+    required this.userUid,
   });
 
   @override
@@ -21,7 +25,9 @@ class CharacterSelectionPage extends StatefulWidget {
 class _CharacterSelectionPageState extends State<CharacterSelectionPage>
     with SingleTickerProviderStateMixin {
   final Color primaryColor = const Color(0xFFFFA69E);
-  Map<String, String> characterMap = {};
+  Map<String, String> characterMap = {}; // "Me" or "AI"
+  Map<String, String> genderMap = {}; // "MALE" or "FEMALE" or "NEUTRAL"
+
   late AnimationController _rippleController;
   late Animation<double> _ripple1, _ripple2;
 
@@ -29,10 +35,9 @@ class _CharacterSelectionPageState extends State<CharacterSelectionPage>
   void initState() {
     super.initState();
 
-    // Setup characters
     characterMap = {for (var c in widget.characters) c: "Me"};
+    genderMap = {for (var c in widget.characters) c: "NEUTRAL"};
 
-    // Setup ripple animation
     _rippleController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -63,7 +68,6 @@ class _CharacterSelectionPageState extends State<CharacterSelectionPage>
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Ripple background
           Positioned(
             top: -60,
             left: -80,
@@ -87,7 +91,6 @@ class _CharacterSelectionPageState extends State<CharacterSelectionPage>
             ),
           ),
 
-          // Custom AppBar
           Positioned(
             top: 0,
             left: 0,
@@ -148,7 +151,6 @@ class _CharacterSelectionPageState extends State<CharacterSelectionPage>
             ),
           ),
 
-          // Main content
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.only(top: 120.0),
@@ -161,23 +163,62 @@ class _CharacterSelectionPageState extends State<CharacterSelectionPage>
                       separatorBuilder: (_, __) => const Divider(),
                       itemBuilder: (context, index) {
                         final character = widget.characters[index];
-                        return ListTile(
-                          title: Text(character),
-                          trailing: ToggleButtons(
-                            isSelected: [
-                              characterMap[character] == "Me",
-                              characterMap[character] == "AI",
-                            ],
-                            onPressed: (int i) {
-                              setState(() {
-                                characterMap[character] = i == 0 ? "Me" : "AI";
-                              });
-                            },
-                            children: const [Text("Me"), Text("AI")],
-                            borderRadius: BorderRadius.circular(10),
-                            selectedColor: Colors.white,
-                            fillColor: primaryColor,
-                          ),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ListTile(
+                              title: Text(character),
+                              trailing: ToggleButtons(
+                                isSelected: [
+                                  characterMap[character] == "Me",
+                                  characterMap[character] == "AI",
+                                ],
+                                onPressed: (int i) {
+                                  setState(() {
+                                    characterMap[character] = i == 0
+                                        ? "Me"
+                                        : "AI";
+                                  });
+                                },
+                                children: const [Text("Me"), Text("AI")],
+                                borderRadius: BorderRadius.circular(10),
+                                selectedColor: Colors.white,
+                                fillColor: primaryColor,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Text("Gender: "),
+                                  DropdownButton<String>(
+                                    value: genderMap[character],
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: "MALE",
+                                        child: Text("Male"),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: "FEMALE",
+                                        child: Text("Female"),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: "NEUTRAL",
+                                        child: Text("Neutral"),
+                                      ),
+                                    ],
+                                    onChanged: (value) {
+                                      setState(() {
+                                        genderMap[character] = value!;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         );
                       },
                     ),
@@ -186,14 +227,34 @@ class _CharacterSelectionPageState extends State<CharacterSelectionPage>
                     padding: const EdgeInsets.all(16.0),
                     child: ElevatedButton.icon(
                       onPressed: () {
+                        final aiCharacters = <String, String>{};
+                        characterMap.forEach((char, who) {
+                          if (who == "AI") {
+                            aiCharacters[char] = genderMap[char] ?? "NEUTRAL";
+                          }
+                        });
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => RecordingPage(
                               extractedText: widget.extractedText,
                               cameras: widget.cameras,
-                              // You can pass characterMap if needed
+                              userRole: characterMap.entries
+                                  .where((entry) => entry.value == "Me")
+                                  .map((entry) => entry.key)
+                                  .toList()
+                                  .join(','),
+                              aiCharacters: {
+                                for (var entry in characterMap.entries)
+                                  if (entry.value == "AI")
+                                    entry.key:
+                                        genderMap[entry.key] ?? "NEUTRAL",
+                              },
+                              scriptHash: widget.scriptHash,
+                              userUid: widget.userUid,
                             ),
+                            // builder: (context) => WSPage()
                           ),
                         );
                       },
@@ -219,7 +280,6 @@ class _CharacterSelectionPageState extends State<CharacterSelectionPage>
     );
   }
 
-  // Ripple widget
   Widget _buildRipple(double size, double opacity) {
     return Container(
       height: size,

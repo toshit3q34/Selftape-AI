@@ -1,16 +1,31 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
 import 'dart:io';
+import 'dart:convert';
+import '../ip_address.dart';
+import 'package:web_socket_channel/io.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class RecordingPage extends StatefulWidget {
   final String extractedText;
   final List<CameraDescription> cameras;
+  final Map<String, String> aiCharacters;
+  final String userRole;
+  final String scriptHash;
+  final String userUid;
 
   const RecordingPage({
     super.key,
     required this.extractedText,
     required this.cameras,
+    required this.aiCharacters,
+    required this.userRole,
+    required this.scriptHash,
+    required this.userUid,
   });
 
   @override
@@ -19,20 +34,50 @@ class RecordingPage extends StatefulWidget {
 
 class _RecordingPageState extends State<RecordingPage> {
   final Color primaryColor = const Color(0xFFFFA69E);
+  final FlutterSoundPlayer _player = FlutterSoundPlayer();
+  bool _isPlayerInited = false;
+  bool _isPlaying = false;
 
   CameraController? _controller;
   bool _isRecording = false;
-  String _cameraMessage = '';
+  IOWebSocketChannel? _channel;
+  late stt.SpeechToText _speech;
 
   @override
   void initState() {
     super.initState();
+    _initSpeech();
     _initCamera();
+    _initPlayer();
+    _initPermissions();
+  }
+
+  void _initPlayer() async {
+    try {
+      await Permission.microphone.request();
+      await _player.openPlayer();
+      
+      // Set up player subscription to track playback state
+      _player.onProgress!.listen((e) {
+        // Handle progress if needed
+      });
+      
+      setState(() {
+        _isPlayerInited = true;
+      });
+      debugPrint('[Player] Initialized successfully');
+    } catch (e) {
+      debugPrint('[Player Init Error]: $e');
+    }
+  }
+
+  void _initPermissions() async {
+    await Permission.microphone.request();
+    await Permission.camera.request();
   }
 
   Future<void> _initCamera() async {
     if (widget.cameras.isEmpty) {
-      setState(() => _cameraMessage = 'No camera found');
       return;
     }
 
@@ -44,14 +89,161 @@ class _RecordingPageState extends State<RecordingPage> {
     _controller = CameraController(
       frontCamera,
       ResolutionPreset.max,
-      enableAudio: true,
+      enableAudio: false,
     );
 
     try {
       await _controller!.initialize();
       if (mounted) setState(() {});
     } catch (e) {
-      setState(() => _cameraMessage = 'Camera error: $e');
+      debugPrint('[Camera Init Error]: $e');
+    }
+  }
+
+  void _initSpeech() {
+    _speech = stt.SpeechToText();
+  }
+
+  Future<void> _startListening() async {
+    bool available = await _speech.initialize();
+    if (available) {
+      _speech.listen(
+        onResult: (val) {
+          if (val.finalResult && val.recognizedWords.isNotEmpty) {
+            final transcript = val.recognizedWords;
+            if (_channel != null) {
+              final payload = jsonEncode({"transcript": transcript});
+              _channel!.sink.add(payload);
+              debugPrint('[STT Sent]: $payload');
+            }
+          }
+        },
+        listenFor: const Duration(seconds: 30),
+        pauseFor: const Duration(seconds: 3),
+        partialResults: false,
+        cancelOnError: true,
+        listenMode: stt.ListenMode.confirmation,
+      );
+    } else {
+      debugPrint('[STT] Speech recognition not available');
+    }
+  }
+
+  void _stopListening() {
+    if (_speech.isListening) {
+      _speech.stop();
+      debugPrint('[STT] Stopped listening');
+    }
+  }
+
+  Future<void> _playAudioFromBytes(List<int> audioBytes) async {
+    if (!_isPlayerInited) {
+      debugPrint('[Player] Not initialized');
+      return;
+    }
+
+    if (_isPlaying) {
+      debugPrint('[Player] Already playing, stopping current playback');
+      await _player.stopPlayer();
+      _isPlaying = false;
+    }
+
+    try {
+      debugPrint('[Player] Starting playback of ${audioBytes.length} bytes');
+      
+      // Stop listening while AI is speaking
+      _stopListening();
+      
+      setState(() {
+        _isPlaying = true;
+      });
+
+      await _player.startPlayer(
+        fromDataBuffer: Uint8List.fromList(audioBytes),
+        codec: Codec.pcm16,
+        sampleRate: 16000,
+        numChannels: 1,
+        whenFinished: () {
+          debugPrint('[Player] Playback finished');
+          setState(() {
+            _isPlaying = false;
+          });
+          // Resume listening after AI finishes speaking
+          if (_isRecording) {
+            _startListening();
+          }
+        },
+      );
+      
+      debugPrint('[Player] Audio playback started successfully');
+    } catch (e, st) {
+      debugPrint('[Player Error]: $e\n$st');
+      setState(() {
+        _isPlaying = false;
+      });
+      // Resume listening even if playback failed
+      if (_isRecording) {
+        _startListening();
+      }
+    }
+  }
+
+  Future<void> _startScriptDialogueWebSocket() async {
+    try {
+      final uri = Uri.parse('ws://${Config.IP_ADDRESS}:8000/ws-dialogue/');
+      _channel = IOWebSocketChannel.connect(uri);
+
+      _channel!.stream.listen(
+        (message) async {
+          try {
+            debugPrint('[WS Response]: Received message of type ${message.runtimeType}');
+            
+            if (message is String) {
+              try {
+                final decoded = json.decode(message);
+                if (decoded is Map && decoded.containsKey("tts_text")) {
+                  debugPrint('[TTS Line]: ${decoded["tts_text"]}');
+                }
+              } catch (_) {
+                debugPrint('[WS Text]: $message');
+              }
+            } else if (message is List<int>) {
+              debugPrint('[WS Binary Audio]: Received ${message.length} bytes');
+              await _playAudioFromBytes(message);
+            } else if (message is Uint8List) {
+              debugPrint('[WS Uint8List Audio]: Received ${message.length} bytes');
+              await _playAudioFromBytes(message.toList());
+            }
+          } catch (e, st) {
+            debugPrint('[WS STREAM ERROR]: $e\n$st');
+          }
+        },
+        onError: (error) {
+          debugPrint('[WS Error]: $error');
+        },
+        onDone: () {
+          debugPrint('[WS Closed]');
+          if (_isRecording) {
+            _startListening(); // Resume listening when connection closes
+          }
+        },
+      );
+
+      // Send initialization payload
+      final initPayload = jsonEncode({
+        "script": widget.extractedText,
+        "user_roles": widget.userRole.split(",").map((e) => e.trim()).toList(),
+        "ai_character_genders": widget.aiCharacters,
+      });
+
+      _channel!.sink.add(initPayload);
+      debugPrint('🔥 Sent initPayload: $initPayload');
+      
+      // Start listening for speech after WebSocket is connected
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+    } catch (e) {
+      debugPrint('[WS Init Error]: $e');
     }
   }
 
@@ -62,6 +254,13 @@ class _RecordingPageState extends State<RecordingPage> {
       try {
         final XFile file = await _controller!.stopVideoRecording();
         setState(() => _isRecording = false);
+        _stopListening();
+        
+        // Stop any ongoing playback
+        if (_isPlaying) {
+          await _player.stopPlayer();
+          _isPlaying = false;
+        }
 
         String videoPath = file.path;
         if (videoPath.endsWith('.temp')) {
@@ -86,6 +285,7 @@ class _RecordingPageState extends State<RecordingPage> {
           );
         }
       } catch (e) {
+        debugPrint('[Recording Stop Error]: $e');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -100,17 +300,19 @@ class _RecordingPageState extends State<RecordingPage> {
       try {
         await _controller!.startVideoRecording();
         setState(() => _isRecording = true);
+        await _startScriptDialogueWebSocket();
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Recording started'),
-              backgroundColor: Colors.black87,
+            const SnackBar(
+              content: Text('Recording started - AI dialogue ready'),
+              backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
             ),
           );
         }
       } catch (e) {
+        debugPrint('[Recording Start Error]: $e');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -127,13 +329,16 @@ class _RecordingPageState extends State<RecordingPage> {
   @override
   void dispose() {
     _controller?.dispose();
+    _channel?.sink.close();
+    _speech.stop();
+    if (_isPlayerInited) {
+      _player.closePlayer();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
@@ -154,12 +359,11 @@ class _RecordingPageState extends State<RecordingPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Back + Titles
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Text(
+                    children: [
+                      const Text(
                         'SelfTape-AI',
                         style: TextStyle(
                           fontSize: 26,
@@ -167,27 +371,40 @@ class _RecordingPageState extends State<RecordingPage> {
                           color: Colors.black,
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Recording Mode',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black87,
-                          fontStyle: FontStyle.italic,
-                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            _isRecording ? 'Recording...' : 'Recording Mode',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                          if (_isPlaying) ...[
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.volume_up,
+                              size: 16,
+                              color: Colors.black87,
+                            ),
+                            const Text(
+                              ' AI Speaking',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
-
-                  // Back and logout buttons (optional)
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.black),
-                        onPressed: () => Navigator.pop(context),
-                        tooltip: 'Back',
-                      ),
-                    ],
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.black),
+                    onPressed: () => Navigator.pop(context),
+                    tooltip: 'Back',
                   ),
                 ],
               ),
@@ -195,15 +412,12 @@ class _RecordingPageState extends State<RecordingPage> {
           ),
         ),
       ),
-
       body: Stack(
         children: [
-          // Fullscreen Camera Preview
           _controller == null || !_controller!.value.isInitialized
               ? const Center(child: CircularProgressIndicator())
               : CameraPreview(_controller!),
 
-          // Floating Record Button (bottom center)
           Positioned(
             bottom: 80,
             left: 0,
@@ -236,11 +450,10 @@ class _RecordingPageState extends State<RecordingPage> {
             ),
           ),
 
-          // Expandable Script Panel
           DraggableScrollableSheet(
-            initialChildSize: 0.15, // starts collapsed
+            initialChildSize: 0.15,
             minChildSize: 0.1,
-            maxChildSize: 0.8, // expand over most of screen
+            maxChildSize: 0.8,
             builder: (context, scrollController) {
               return Container(
                 padding: const EdgeInsets.all(16),
@@ -288,6 +501,36 @@ class _RecordingPageState extends State<RecordingPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
+                    if (_isRecording) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _speech.isListening ? Icons.mic : Icons.mic_off,
+                              color: _speech.isListening ? Colors.green : Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _speech.isListening 
+                                ? 'Listening for your speech...' 
+                                : _isPlaying 
+                                  ? 'AI is speaking...' 
+                                  : 'Ready to listen',
+                              style: TextStyle(
+                                color: Colors.green.shade700,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               );
