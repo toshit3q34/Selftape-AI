@@ -53,7 +53,7 @@ Self-taping has become the standard in auditions, but traditional methods can be
 
 Pratyush Kumar Swain : [Github](https://github.com/Pratyush439), [LinkedIn](https://www.linkedin.com/in/pratyush-kumar-swain-2313482a5/)
 
-Toshit Jain : 
+Toshit Jain : [Github](https://github.com/toshit3q34), [LinkedIn](https://www.linkedin.com/in/toshit3q34)
 
 Yash Kharangate : 
 
