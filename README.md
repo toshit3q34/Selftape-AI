@@ -49,3 +49,10 @@ Self-taping has become the standard in auditions, but traditional methods can be
 └── sceneapp/
     └── Flutter frontend with seamless UI and camera integration
 ```
+## Developer details
+
+Pratyush Kumar Swain : [Github](https://github.com/Pratyush439), [LinkedIn](https://www.linkedin.com/in/pratyush-kumar-swain-2313482a5/)
+
+Toshit Jain : 
+
+Yash Kharangate : 
