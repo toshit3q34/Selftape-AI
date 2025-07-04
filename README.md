@@ -56,3 +56,5 @@ Pratyush Kumar Swain : [Github](https://github.com/Pratyush439), [LinkedIn](http
 Toshit Jain : 
 
 Yash Kharangate : 
+
+## For any more information on the project, kindly contact us through the given links
